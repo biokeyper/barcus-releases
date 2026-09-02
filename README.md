@@ -77,15 +77,77 @@ BARCUS_HTTP_PORT=8545 \
   published in the release notes. A mismatch means your genesis inputs are wrong.
 - Sync is automatic: one reachable bootstrap address is the entire join.
 
-## Becoming a validator
+## Keys and the keystore
 
-1. Generate a keystore: `./barcus-node-linux-x86_64 keygen` (guard the seed; the address is
-   derived from it).
-2. Run your node with `BARCUS_KEYSTORE=<file>` and sync to the tip.
-3. Ask the network's governance to seat your address (`GovAction::AddValidator`, approved by
-   a 75% supermajority of the current committee). On devnet-2, contact the operator (below).
-4. Once seated, your node is promoted into the committee at the next epoch boundary after it
+Every role signs with an ML-DSA-65 key derived from a 32-byte seed. Generate one:
+
+```sh
+./barcus-node-linux-x86_64 keygen
+# seed:    0x<64 hex chars>     ← the secret. The address is derived from it.
+# address: 0x<40 hex chars>
+```
+
+A **keystore is just that seed in a file** — plain text, 64 hex chars (with or without
+`0x`), nothing else:
+
+```sh
+./barcus-node-linux-x86_64 keygen | head -1 | cut -d' ' -f2 > node.key
+chmod 600 node.key
+BARCUS_KEYSTORE=$PWD/node.key ./barcus-node-linux-x86_64 …
+```
+
+Guard the file: whoever holds the seed **is** the address. There is no recovery.
+
+## Roles — what this one binary can run
+
+The same executable runs every network role as a subcommand. What each needs:
+
+| Role | Start | Needs | Entry |
+|---|---|---|---|
+| **Observer** | `barcus-node 0 6 7400` + a bootstrap | nothing | permissionless |
+| **Validator** | same, with `BARCUS_KEYSTORE` | a committee seat | governance vote (see below) |
+| **Storage miner** | `barcus-node miner <rpc_host:port>` | funded wallet (bond), a local Kubo (`ipfs`) daemon, and the network's private-swarm key | permissionless tx (`StorageMinerRegister`) — but see the note |
+| **PRE node** | `barcus-node pre <rpc_host:port>` | funded wallet (bond), a reachable announce URL | permissionless tx (`PreRegister`) |
+| **Availability attester** | `barcus-node attester <rpc_host:port>` | funded wallet (bond) | permissionless tx (`AttesterRegister`) |
+| **Forex oracle** | `barcus-node forex-oracle <rpc_host:port>` | funded wallet (bond) + oracle admission | admission (`AdmitOracle`) — price feeds are trust-critical by design |
+
+Role daemons take their signing wallet from `BARCUS_ROLE_SEED=0x<64 hex>` or
+`BARCUS_KEYSTORE=<file>`. Fund a devnet wallet via the faucet (the explorer's Faucet page,
+or a `FaucetClaim` transaction). **One address, one role** — the chain refuses an address
+that tries to hold two (a miner may not attest its own warehouse, a validator may not buy
+weight with a miner, and so on).
+
+> **External storage miners, honestly:** the devnet's IPFS swarm is *private*; its
+> `swarm.key` is not published and must be obtained from the operator (open an issue). Until
+> you have it, the miner daemon cannot fetch or serve dataset content. Every other role above
+> works from this repository's artifacts alone.
+
+## Becoming a validator — and why it is a vote, not a form
+
+1. Generate a keystore (above) and run your node with `BARCUS_KEYSTORE=<file>`; let it sync
+   to the tip.
+2. Ask the network's governance to seat your address (`GovAction::AddValidator`, approved by
+   a 75% supermajority of the current committee). On devnet-2, open an issue here.
+3. Once seated, your node is promoted into the committee at the next epoch boundary after it
    demonstrates presence — no restarts, yours or anyone else's.
+
+**"How can governance handle thousands of applicants?"** It doesn't have to, and that is by
+design rather than by omission:
+
+- A BFT committee is a **bounded set** — consensus messaging grows with committee size, so
+  every BFT chain on earth runs tens-to-hundreds of validators, not thousands. The seat is
+  the scarce thing; a vote per seat is proportionate.
+- Barcus is **PoDO, not proof-of-stake**: consensus weight is membership + data custody, not
+  capital. With no stake to slash, an open validator door would be a free Sybil attack —
+  today, the committee's own supermajority *is* the Sybil filter.
+- Everything that **should** scale to thousands of nodes already does, permissionlessly:
+  observers need nobody's approval, and miners/PRE nodes/attesters self-register with a
+  bonded on-chain transaction — no vote, no human in the loop.
+- **Roadmap:** an automated candidacy pipeline (register keys → declare candidacy → promoted
+  from the candidate set at epoch boundaries, patterned on Substrate's session model) is the
+  designed successor to per-seat votes, planned for when the network outgrows
+  operator-scale governance. It changes who approves — it cannot change the physics of a
+  bounded committee.
 
 ## Transaction signing (SDK/tooling authors)
 
