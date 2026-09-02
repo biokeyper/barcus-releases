@@ -17,23 +17,37 @@ Add `Environment=BARCUS_KEYSTORE=%h/barcus/node.key` to the unit and let the nod
 the tip. The address printed by `keygen` is your validator identity — guard the seed file;
 whoever holds it *is* the address, and there is no recovery.
 
-## 2. Request a seat
+## 2. Declare candidacy — no vote, no human in the loop
 
-On devnet-2, open an issue in this repository with your address. Admission is currently a
-governance vote by the existing committee; it is moving to an **automated candidacy
-pipeline** (register keys → declare candidacy on-chain → automatic promotion from the
-candidate set at epoch boundaries), at which point this step becomes a transaction, not a
-request.
+Admission is a fully **automated candidacy pipeline** — no governance vote, no operator
+seats you by hand:
+
+1. **Declare** with a `CandidacyDeclare` transaction signed by your validator key. It is
+   free (validators post no bond, ever) and permissionless — it just enters you into the
+   candidate pool. Refused only if your address holds a conflicting role or was permanently
+   barred (provable equivocation, or a governance ejection).
+2. **Prove presence** with a `ValidatorPresence` transaction quoting a fresh chain head —
+   this marks your synced node *ready*. (Once seated you keep proving presence through
+   normal DAG participation; the heartbeat is what keeps you eligible.)
+
+That is the whole admission. From here the network promotes you on its own.
 
 ## 3. Promotion happens on its own
 
-Once seated, nothing restarts — yours or anyone else's:
+At the next **session boundary**, the network derives the active committee from the ready
+candidate pool — deterministically, so every node agrees — and seats you. Nothing restarts,
+yours or anyone else's.
 
-- Your node keeps syncing; the network observes it **demonstrating presence** (authoring
-  or acknowledging in the DAG).
-- At the next epoch boundary after presence is demonstrated, the seat is promoted into the
-  active committee and starts counting toward quorum.
-- A seat whose node is not yet up costs the network nothing: it is not counted until ready.
+- A candidate that is not yet ready (or whose node has gone dark) simply is not seated;
+  it costs the network nothing until it is ready.
+- Committee growth is **gradual and safe**: each boundary only admits as many newcomers as
+  the continuing validators can still meet quorum for, so admission never stalls the chain.
+  A large influx of candidates is absorbed over successive sessions, not in one jump.
+- When the ready pool exceeds the committee-size cap, membership rotates each session over
+  everyone eligible — unpredictable in advance, so no committee is targetable ahead of time.
+
+Check yourself in `podo_getCandidates` (are you `ready`? `seated`?) and `podo_getValidators`
+(once seated: `active`, an advancing `engineRound`, `lastCertifiedRound` tracking it).
 
 Check yourself in `podo_getValidators` (public gateway or your own node): your entry shows
 `active`, an advancing `engineRound`, and `lastCertifiedRound` tracking it.
@@ -56,7 +70,7 @@ Check yourself in `podo_getValidators` (public gateway or your own node): your e
 |---|---|
 | Provable equivocation (signing conflicting batches) | Unseated by consensus rules. |
 | Governance vote (`RemoveValidator`) | The committee's supermajority removes the seat. |
-| Voluntary exit | Ask an operator to propose removal (a `CandidacyWithdraw` transaction arrives with the candidacy pipeline). |
+| Voluntary exit | A `CandidacyWithdraw` transaction — you leave the pool at the next session boundary; earnings you have accrued still pay out. |
 
 Since validators post no bond, there is nothing to confiscate on exit — a removed seat
 simply stops counting at the next boundary.
