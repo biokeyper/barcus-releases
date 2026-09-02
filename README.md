@@ -121,32 +121,16 @@ weight with a miner, and so on).
 > you have it, the miner daemon cannot fetch or serve dataset content. Every other role above
 > works from this repository's artifacts alone.
 
-## Becoming a validator — and why it is a vote, not a form
+## Becoming a validator
 
 1. Generate a keystore (above) and run your node with `BARCUS_KEYSTORE=<file>`; let it sync
    to the tip.
-2. Ask the network's governance to seat your address (`GovAction::AddValidator`, approved by
-   a 75% supermajority of the current committee). On devnet-2, open an issue here.
-3. Once seated, your node is promoted into the committee at the next epoch boundary after it
+2. Request a seat: on devnet-2, open an issue in this repository with your address.
+   Validator admission is moving to an **automated candidacy pipeline** — register keys →
+   declare candidacy on-chain → automatic promotion from the candidate set at epoch
+   boundaries — at which point this step becomes a transaction, not a request.
+3. Once seated, your node joins the committee at the next epoch boundary after it
    demonstrates presence — no restarts, yours or anyone else's.
-
-**"How can governance handle thousands of applicants?"** It doesn't have to, and that is by
-design rather than by omission:
-
-- A BFT committee is a **bounded set** — consensus messaging grows with committee size, so
-  every BFT chain on earth runs tens-to-hundreds of validators, not thousands. The seat is
-  the scarce thing; a vote per seat is proportionate.
-- Barcus is **PoDO, not proof-of-stake**: consensus weight is membership + data custody, not
-  capital. With no stake to slash, an open validator door would be a free Sybil attack —
-  today, the committee's own supermajority *is* the Sybil filter.
-- Everything that **should** scale to thousands of nodes already does, permissionlessly:
-  observers need nobody's approval, and miners/PRE nodes/attesters self-register with a
-  bonded on-chain transaction — no vote, no human in the loop.
-- **Roadmap:** an automated candidacy pipeline (register keys → declare candidacy → promoted
-  from the candidate set at epoch boundaries, patterned on Substrate's session model) is the
-  designed successor to per-seat votes, planned for when the network outgrows
-  operator-scale governance. It changes who approves — it cannot change the physics of a
-  bounded committee.
 
 ## Transaction signing (SDK/tooling authors)
 
