@@ -8,6 +8,20 @@ committee membership, not from stake.
 > **This repository contains binaries and documentation only.** The Barcus source code is
 > not published here and is not licensed for redistribution. See [NOTICE](NOTICE.md).
 
+## Release channels
+
+Each branch of this repository is one network's channel — docs and release tags never mix
+across networks:
+
+| Branch | Network | Status |
+|---|---|---|
+| [`devnet`](../../tree/devnet) | **devnet-2** (development network) | live — you are here |
+| [`testnet`](../../tree/testnet) | testnet | not launched yet |
+| [`main`](../../tree/main) | mainnet | not launched yet |
+
+Release tags are prefixed by channel (`devnet2-…`); a release's notes state the network id
+it belongs to.
+
 ---
 
 ## What is Barcus?
@@ -100,21 +114,29 @@ Guard the file: whoever holds the seed **is** the address. There is no recovery.
 
 ## Roles — what this one binary can run
 
-The same executable runs every network role as a subcommand. What each needs:
+The same executable runs every network role as a subcommand. **Each role has a full setup
+guide** in [`docs/`](docs/):
 
-| Role | Start | Needs | Entry |
+| Role | Guide | Needs | Entry |
 |---|---|---|---|
-| **Observer** | `barcus-node 0 6 7400` + a bootstrap | nothing | permissionless |
-| **Validator** | same, with `BARCUS_KEYSTORE` | a committee seat | governance vote (see below) |
-| **Storage miner** | `barcus-node miner <rpc_host:port>` | funded wallet (bond), a local Kubo (`ipfs`) daemon, and the network's private-swarm key | permissionless tx (`StorageMinerRegister`) — but see the note |
-| **PRE node** | `barcus-node pre <rpc_host:port>` | funded wallet (bond), a reachable announce URL | permissionless tx (`PreRegister`) |
-| **Availability attester** | `barcus-node attester <rpc_host:port>` | funded wallet (bond) | permissionless tx (`AttesterRegister`) |
+| **Observer** | [docs/observer.md](docs/observer.md) | nothing | permissionless |
+| **Validator** | [docs/validator.md](docs/validator.md) | a committee seat | governance vote, moving to automated candidacy |
+| **Storage miner** | [docs/storage-miner.md](docs/storage-miner.md) | funded wallet (bond), a local Kubo (`ipfs`) daemon, and the network's private-swarm key | permissionless tx (`StorageMinerRegister`) — but see the note |
+| **PRE node** | [docs/pre-node.md](docs/pre-node.md) | funded wallet (bond), a reachable announce URL | permissionless tx (`PreRegister`) |
+| **Availability attester** | [docs/attester.md](docs/attester.md) | funded wallet (bond) | permissionless tx (`AttesterRegister`) |
 
 Role daemons take their signing wallet from `BARCUS_ROLE_SEED=0x<64 hex>` or
 `BARCUS_KEYSTORE=<file>`. Fund a devnet wallet via the faucet (the explorer's Faucet page,
 or a `FaucetClaim` transaction). **One address, one role** — the chain refuses an address
 that tries to hold two (a miner may not attest its own warehouse, a validator may not buy
 weight with a miner, and so on).
+
+**The bonded roles are permissionless in, accountable throughout:** registration needs no
+approval, but the validator committee holds a supermajority **veto** — it can eject a
+specific miner, PRE node or attester as a policy decision. Ejection never confiscates the
+bond (misbehaviour has its own, harsher paths); it pays out through the role's own
+deregister transaction once obligations drain, and permanently bars that address from
+re-registering the role. Details in each guide.
 
 > **External storage miners, honestly:** the devnet's IPFS swarm is *private*; its
 > `swarm.key` is not published and must be obtained from the operator (open an issue). Until
