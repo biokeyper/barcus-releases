@@ -110,10 +110,6 @@ The same executable runs every network role as a subcommand. What each needs:
 | **PRE node** | `barcus-node pre <rpc_host:port>` | funded wallet (bond), a reachable announce URL | permissionless tx (`PreRegister`) |
 | **Availability attester** | `barcus-node attester <rpc_host:port>` | funded wallet (bond) | permissionless tx (`AttesterRegister`) |
 
-The **forex oracle is not an open role** — it is price-feed *infrastructure the network
-runs itself* (a single admitted oracle aggregating many sources, so a quote is trust-critical
-by design). It is not up for grabs, which is why it is absent from the table above.
-
 Role daemons take their signing wallet from `BARCUS_ROLE_SEED=0x<64 hex>` or
 `BARCUS_KEYSTORE=<file>`. Fund a devnet wallet via the faucet (the explorer's Faucet page,
 or a `FaucetClaim` transaction). **One address, one role** — the chain refuses an address
