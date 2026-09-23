@@ -75,7 +75,11 @@ An observer syncs the full chain and serves local RPC, with no consensus role. Y
 **bootstrap multiaddr** from a network operator (see *Getting connected* below).
 
 ```sh
+# the chain-spec ships with every release since devnet2-2026-09-22 — download it next to the binary
+curl -LO https://github.com/biokeyper/barcus-releases/releases/download/devnet2-2026-09-22/chain-spec-devnet2-50dd4fbd.json
 BARCUS_TRANSPORT=libp2p \
+BARCUS_CHAIN_SPEC=$PWD/chain-spec-devnet2-50dd4fbd.json \
+BARCUS_KEYSTORE=$PWD/node.key \
 BARCUS_BOOTSTRAP=/dns4/<bootstrap-host>/tcp/7400/p2p/<PeerId> \
 BARCUS_LISTEN=0.0.0.0:7400 \
 BARCUS_DATA_DIR=$HOME/barcus/data \
@@ -87,6 +91,12 @@ BARCUS_HTTP_PORT=8545 \
   it must equal the network's *genesis* validator count (currently **6** for devnet-2 — a
   seat added later by governance is *not* part of this number). A wrong value builds a
   different genesis: your node runs happily and never agrees with anyone.
+- **`BARCUS_CHAIN_SPEC` is required since the 2026-09-22 regenesis** (net `50dd4fbd`): the
+  network's genesis time is pinned (SEC-12), so the binary's built-in devnet defaults build a
+  *different* genesis now. The spec is attached to every release; the identical
+  `BARCUS_GENESIS_MS` would also do, but the spec is what operators compare.
+- **`BARCUS_KEYSTORE` is required for a joiner**: without it the identity is derived from
+  `<index>`, and indexes 0–5 are the seated validators' own seeds (see *Keys and the keystore*).
 - First boot prints a line containing `net=<8 hex>` — it must match the current network id
   published in the release notes. A mismatch means your genesis inputs are wrong.
 - Sync is automatic: one reachable bootstrap address is the entire join.
